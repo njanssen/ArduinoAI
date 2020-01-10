@@ -1,18 +1,10 @@
-# Arduino and AI
+# arduino-nano-33-ble
 
-This is a temporary website linking some of the demos and tools we build to support the creation of AI/ML applications on the Arduino platform.
+Bluetooth service implementation for the [Arduino Nano 33 BLE](https://www.arduino.cc/en/Guide/NANO33BLE) and 
+[Arduino Nano 33 BLE Sense](https://www.arduino.cc/en/Guide/NANO33BLESense).
 
+## Extras
 
-## Tutorials
-
-[Get started with machine learning on Arduino](https://blog.arduino.cc/2019/10/15/get-started-with-machine-learning-on-arduino/)
-
-[Fruit identification using Arduino and TensorFlow](https://blog.arduino.cc/2019/11/07/fruit-identification-using-arduino-and-tensorflow/)
-
-
-## BLE Sense Demo Dashboard
-
-[BLE Sense Demo - Arduino sketch](https://create.arduino.cc/editor/dpajak/e4128780-d76d-438f-97a4-541740cb0473/preview)
-
-[BLE Sense Demo - Web Dashboard](https://arduino.github.io/ArduinoAI/BLESense-test-dashboard) (Chrome only)
-
+-   This project is a fork of the official [Arduino and AI](https://github.com/arduino/ArduinoAI) repository.
+-   See the [License](LICENSE) file for license rights and limitations (GPL).
+-   Pull Requests are welcome!
