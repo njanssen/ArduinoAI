@@ -28,27 +28,27 @@
 
 #include <ArduinoBLE.h>
 
-#define ARDUINO_NANO_33_BLE_SERVICE_UUID(val) ("6fbe1da7-" val "-44de-92c4-bb6e04fb0212")
+#define NANO_33_BLE_SERVICE_UUID(val) ("6fbe1da7-" val "-44de-92c4-bb6e04fb0212")
 
 const int VERSION = 0x00000001;
-const int IMU_SENSOR_RATE = 119
+const int NANO_33_BLE_IMU_HZ = 119;
 
-BLEService                     service                       (ARDUINO_NANO_33_BLE_SERVICE_UUID("0000"));
-BLEUnsignedIntCharacteristic   versionCharacteristic         (ARDUINO_NANO_33_BLE_SERVICE_UUID("1001"), BLERead);
-BLEUnsignedShortCharacteristic ambientLightCharacteristic    (ARDUINO_NANO_33_BLE_SERVICE_UUID("2001"), BLENotify); // 16-bit
-BLECharacteristic              colorCharacteristic           (ARDUINO_NANO_33_BLE_SERVICE_UUID("2002"), BLENotify, 3 * sizeof(unsigned short)); // Array of 16-bit, RGB
-BLEUnsignedCharCharacteristic  proximityCharacteristic       (ARDUINO_NANO_33_BLE_SERVICE_UUID("2003"), BLENotify); // Byte, 0 - 255 => close to far
-BLEByteCharacteristic          gestureCharacteristic         (ARDUINO_NANO_33_BLE_SERVICE_UUID("2004"), BLENotify); // NONE = -1, UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3
-BLECharacteristic              accelerationCharacteristic    (ARDUINO_NANO_33_BLE_SERVICE_UUID("3001"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, G
-BLECharacteristic              gyroscopeCharacteristic       (ARDUINO_NANO_33_BLE_SERVICE_UUID("3002"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, dps
-BLECharacteristic              magneticFieldCharacteristic   (ARDUINO_NANO_33_BLE_SERVICE_UUID("3003"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, uT
-BLECharacteristic              orientationCharacteristic     (ARDUINO_NANO_33_BLE_SERVICE_UUID("3004"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, rad
+BLEService                     service                       (NANO_33_BLE_SERVICE_UUID("0000"));
+BLEUnsignedIntCharacteristic   versionCharacteristic         (NANO_33_BLE_SERVICE_UUID("1001"), BLERead);
+BLEUnsignedShortCharacteristic ambientLightCharacteristic    (NANO_33_BLE_SERVICE_UUID("2001"), BLENotify); // 16-bit
+BLECharacteristic              colorCharacteristic           (NANO_33_BLE_SERVICE_UUID("2002"), BLENotify, 3 * sizeof(unsigned short)); // Array of 16-bit, RGB
+BLEUnsignedCharCharacteristic  proximityCharacteristic       (NANO_33_BLE_SERVICE_UUID("2003"), BLENotify); // Byte, 0 - 255 => close to far
+BLEByteCharacteristic          gestureCharacteristic         (NANO_33_BLE_SERVICE_UUID("2004"), BLENotify); // NONE = -1, UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3
+BLECharacteristic              accelerationCharacteristic    (NANO_33_BLE_SERVICE_UUID("3001"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, G
+BLECharacteristic              gyroscopeCharacteristic       (NANO_33_BLE_SERVICE_UUID("3002"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, dps
+BLECharacteristic              magneticFieldCharacteristic   (NANO_33_BLE_SERVICE_UUID("3003"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, uT
+BLECharacteristic              orientationCharacteristic     (NANO_33_BLE_SERVICE_UUID("3004"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, rad
 
-BLEFloatCharacteristic         pressureCharacteristic        (ARDUINO_NANO_33_BLE_SERVICE_UUID("4001"), BLERead); // Float, kPa
-BLEFloatCharacteristic         temperatureCharacteristic     (ARDUINO_NANO_33_BLE_SERVICE_UUID("4002"), BLERead); // Float, Celcius
-BLEFloatCharacteristic         humidityCharacteristic        (ARDUINO_NANO_33_BLE_SERVICE_UUID("4003"), BLERead); // Float, Percentage
-BLECharacteristic              microphoneLevelCharacteristic (ARDUINO_NANO_33_BLE_SERVICE_UUID("5001"), BLENotify, 32); // Int, RMS of audio input
-BLECharacteristic              rgbLedCharacteristic          (ARDUINO_NANO_33_BLE_SERVICE_UUID("6001"), BLERead | BLEWrite, 3 * sizeof(byte)); // Array of 3 bytes, RGB
+BLEFloatCharacteristic         pressureCharacteristic        (NANO_33_BLE_SERVICE_UUID("4001"), BLERead); // Float, kPa
+BLEFloatCharacteristic         temperatureCharacteristic     (NANO_33_BLE_SERVICE_UUID("4002"), BLERead); // Float, Celcius
+BLEFloatCharacteristic         humidityCharacteristic        (NANO_33_BLE_SERVICE_UUID("4003"), BLERead); // Float, Percentage
+BLECharacteristic              microphoneLevelCharacteristic (NANO_33_BLE_SERVICE_UUID("5001"), BLENotify, 32); // Int, RMS of audio input
+BLECharacteristic              rgbLedCharacteristic          (NANO_33_BLE_SERVICE_UUID("6001"), BLERead | BLEWrite, 3 * sizeof(byte)); // Array of 3 bytes, RGB
 
 // String to calculate the local and device name
 String name;
@@ -66,36 +66,13 @@ Madgwick filter;
 
 unsigned long micros_per_reading, micros_previous;
 
+bool isSenseBoard;
+
 void setup() {
   Serial.begin(9600);
 
   //while (!Serial);
   Serial.println("Started");
-
-
-  if (!APDS.begin()) {
-    Serial.println("Failled to initialized APDS!");
-
-    while (1);
-  }
-
-  if (!HTS.begin()) {
-    Serial.println("Failled to initialized HTS!");
-
-    while (1);
-  }
-
-  if (!BARO.begin()) {
-    Serial.println("Failled to initialized BARO!");
-
-    while (1);
-  }
-
-  if (!IMU.begin()) {
-    Serial.println("Failled to initialized IMU!");
-
-    while (1);
-  }
 
   // configure the data receive callback
   PDM.onReceive(onPDMdata);
@@ -103,8 +80,18 @@ void setup() {
   // initialize PDM with:
   // - one channel (mono mode)
   // - a 16 kHz sample rate
-  if (!PDM.begin(1, 16000)) {
-    Serial.println("Failed to start PDM!");
+
+  if (APDS.begin() && HTS.begin() && BARO.begin() && PDM.begin(1, 16000)) {
+    Serial.println("Succesfully initialized sensors on Nano 33 BLE Sense");
+    isSenseBoard = true;
+  } else {
+    Serial.println("Unable to initialzie sensors, assuming Nano 33 BLE board");
+    isSenseBoard = false;
+  }
+
+  if (!IMU.begin()) {
+    Serial.println("Failed to initialized IMU!");
+
     while (1);
   }
 
@@ -121,7 +108,9 @@ void setup() {
 
   address.toUpperCase();
 
-  name = "BLESense-";
+  name = "BLE";
+  if (isSenseBoard) name += "Sense";
+  name += "-";
   name += address[address.length() - 5];
   name += address[address.length() - 4];
   name += address[address.length() - 2];
@@ -130,48 +119,48 @@ void setup() {
   Serial.print("name = ");
   Serial.println(name);
 
-
   BLE.setLocalName(name.c_str());
   BLE.setDeviceName(name.c_str());
   BLE.setAdvertisedService(service);
 
   service.addCharacteristic(versionCharacteristic);
-  service.addCharacteristic(ambientLightCharacteristic);
-  service.addCharacteristic(colorCharacteristic);
-  service.addCharacteristic(proximityCharacteristic);
-  service.addCharacteristic(gestureCharacteristic);
+  versionCharacteristic.setValue(VERSION);
+
   service.addCharacteristic(accelerationCharacteristic);
   service.addCharacteristic(gyroscopeCharacteristic);
   service.addCharacteristic(magneticFieldCharacteristic);
   service.addCharacteristic(orientationCharacteristic);
-
-  service.addCharacteristic(pressureCharacteristic);
-  service.addCharacteristic(temperatureCharacteristic);
-  service.addCharacteristic(humidityCharacteristic);
-  service.addCharacteristic(microphoneLevelCharacteristic);
   service.addCharacteristic(rgbLedCharacteristic);
-
-  versionCharacteristic.setValue(VERSION);
-  pressureCharacteristic.setEventHandler(BLERead, onPressureCharacteristicRead);
-  temperatureCharacteristic.setEventHandler(BLERead, onTemperatureCharacteristicRead);
-  humidityCharacteristic.setEventHandler(BLERead, onHumidityCharacteristicRead);
   rgbLedCharacteristic.setEventHandler(BLEWritten, onRgbLedCharacteristicWrite);
+
+  if (isSenseBoard) {
+    service.addCharacteristic(ambientLightCharacteristic);
+    service.addCharacteristic(colorCharacteristic);
+    service.addCharacteristic(proximityCharacteristic);
+    service.addCharacteristic(gestureCharacteristic);
+    service.addCharacteristic(pressureCharacteristic);
+    pressureCharacteristic.setEventHandler(BLERead, onPressureCharacteristicRead);
+    service.addCharacteristic(temperatureCharacteristic);
+    temperatureCharacteristic.setEventHandler(BLERead, onTemperatureCharacteristicRead);
+    service.addCharacteristic(humidityCharacteristic);
+    humidityCharacteristic.setEventHandler(BLERead, onHumidityCharacteristicRead);
+    service.addCharacteristic(microphoneLevelCharacteristic);
+  }
 
   BLE.addService(service);
 
   BLE.advertise();
 
-  // start the filter to run at the sample rate:
-  filter.begin(IMU_SENSOR_RATE);
-
-  micros_per_reading = 1000000/IMU_SENSOR_RATE;
-  micros_previous = micros(); 
+  // start the MadgwickAHRS filter to run at the IMU sample rate
+  filter.begin(NANO_33_BLE_IMU_HZ);
+  micros_per_reading = 1000000 / NANO_33_BLE_IMU_HZ;
+  micros_previous = micros();
 }
 
 void loop() {
   while (BLE.connected()) {
 
-    // Most recent IMU readings for 
+    // Keep most recent IMU readings for MadgwichAHRS
     float acceleration[3];
     float dps[3];
     float magneticField[3];
