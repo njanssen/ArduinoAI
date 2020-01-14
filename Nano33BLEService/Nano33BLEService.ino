@@ -1,5 +1,5 @@
 /*
-   Bluetooth Service implementation for Arduino Nano 33 BLE and Arduino Nano 33 BLE Sense
+   Bluetooth Service implementation for Arduino Nano 33 BLE and Nano 33 BLE Sense
 
    Copyright (C) 2019 Arduino SA [original work]
    Copyright (C) 2020 Niels Janssen // VLIEGWERK (https://www.vliegwerk.com)
