@@ -1,9 +1,13 @@
 # arduino-nano-33-ble
 
 Bluetooth service implementation for the [Arduino Nano 33 BLE](https://www.arduino.cc/en/Guide/NANO33BLE) and 
-[Arduino Nano 33 BLE Sense](https://www.arduino.cc/en/Guide/NANO33BLESense).
+[Nano 33 BLE Sense](https://www.arduino.cc/en/Guide/NANO33BLESense).
 
 ## What does this sketch do?
+
+This sketch implements a Bluetooth Low Energy (BLE) service which makes it easy to listen to data from one or more sensors on a Arduino Nano 33 BLE and Nano 33 BLE Sense. The sketch utilizes the on-board sensors and Bluetooth Low Energy connectivity.
+
+See the [BLE Specification](BLE_specification.md) for service implementations details (services and characteristics).
 
 Supported inertial measurement unit (IMU) sensors found on both the Nano 33 BLE and Nano 33 BLE Sense:
 
@@ -22,12 +26,19 @@ Supported sensors found on the Nano 33 BLE Sense only:
 -	Color (APDS9960)
 -	Proximity (APDS9960)
 
-The library provides the following filters and algorithms related to the IMU sensors:
+The library uses the following filters and algorithms related to the IMU sensors:
 
--   Arduino's official [Madgwick AHRS sensor fusion algorithm implementation](https://github.com/arduino-libraries/MadgwickAHRS) for orientation (heading, pitch, and roll)
+-   Arduino's [Madgwick AHRS sensor fusion algorithm implementation](https://github.com/arduino-libraries/MadgwickAHRS) for orientation (heading, pitch, and roll)
+
+## Libraries
+
+The following libraries are compatible with the Bluetooth service implementation provided by this sketch:
+
+- Node.js interface (npm module): [@vliegwerk/arduino-nano-33-ble](https://www.npmjs.com/package/@vliegwerk/arduino-nano-33-ble) 
+
 
 ## Extras
 
--   This project is a fork of the official [Arduino and AI](https://github.com/arduino/ArduinoAI) repository.
+-   The Arduino sketch on this project is a fork of the [Arduino and AI](https://github.com/arduino/ArduinoAI) repository by Arduino.
 -   See the [License](LICENSE) file for license rights and limitations (GPL).
 -   Pull Requests are welcome!

@@ -28,7 +28,7 @@
 
 #include <ArduinoBLE.h>
 
-#define NANO_33_BLE_SERVICE_UUID(val) ("6fbe1da7-" val "-44de-92c4-bb6e04fb0212")
+#define NANO_33_BLE_SERVICE_UUID(val) ("e905de3e-" val "-44de-92c4-bb6e04fb0212")
 
 const int VERSION = 0x00000001;
 const int NANO_33_BLE_IMU_HZ = 119;
@@ -108,7 +108,7 @@ void setup() {
 
   address.toUpperCase();
 
-  name = "BLE";
+  name = "Nano33BLE";
   if (isSenseBoard) name += "Sense";
   name += "-";
   name += address[address.length() - 5];
