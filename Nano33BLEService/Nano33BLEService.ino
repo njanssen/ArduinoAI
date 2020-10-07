@@ -18,6 +18,7 @@
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <arm_math.h>
+#include <elapsedMillis.h>
 
 #include <Arduino_APDS9960.h>
 #include <Arduino_HTS221.h>
@@ -28,10 +29,9 @@
 
 #include <ArduinoBLE.h>
 
+#define NANO_33_BLE_SERVICE_VERSION 0x00000001
 #define NANO_33_BLE_SERVICE_UUID(val) ("e905de3e-" val "-44de-92c4-bb6e04fb0212")
-
-const int VERSION = 0x00000001;
-const int NANO_33_BLE_IMU_HZ = 119;
+#define NANO_33_BLE_IMU_HZ 119
 
 BLEService                     service                       (NANO_33_BLE_SERVICE_UUID("0000"));
 BLEUnsignedIntCharacteristic   versionCharacteristic         (NANO_33_BLE_SERVICE_UUID("1001"), BLERead);
@@ -42,7 +42,7 @@ BLEByteCharacteristic          gestureCharacteristic         (NANO_33_BLE_SERVIC
 BLECharacteristic              accelerationCharacteristic    (NANO_33_BLE_SERVICE_UUID("3001"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, G
 BLECharacteristic              gyroscopeCharacteristic       (NANO_33_BLE_SERVICE_UUID("3002"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, dps
 BLECharacteristic              magneticFieldCharacteristic   (NANO_33_BLE_SERVICE_UUID("3003"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, uT
-BLECharacteristic              orientationCharacteristic     (NANO_33_BLE_SERVICE_UUID("3004"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, rad
+// BLECharacteristic              orientationCharacteristic     (NANO_33_BLE_SERVICE_UUID("3004"), BLENotify, 3 * sizeof(float)); // Array of 3 floats, rad
 
 BLEFloatCharacteristic         pressureCharacteristic        (NANO_33_BLE_SERVICE_UUID("4001"), BLERead); // Float, kPa
 BLEFloatCharacteristic         temperatureCharacteristic     (NANO_33_BLE_SERVICE_UUID("4002"), BLERead); // Float, Celcius
@@ -62,11 +62,13 @@ arm_rfft_instance_q15 FFT;
 volatile int samplesRead;
 
 // initialize a MadgwickAHRS filter:
-Madgwick filter;
-
-unsigned long micros_per_reading, micros_previous;
+// Madgwick filter;
 
 bool isSenseBoard;
+
+elapsedMillis sinceHzPrint;
+unsigned short accelerationSamples;
+unsigned short gyroscopeSamples;
 
 void setup() {
   Serial.begin(9600);
@@ -91,15 +93,18 @@ void setup() {
 
   if (!IMU.begin()) {
     Serial.println("Failed to initialized IMU!");
-
     while (1);
   }
 
   if (!BLE.begin()) {
     Serial.println("Failled to initialized BLE!");
-
     while (1);
   }
+
+//  minimum: minimum desired connection interval in units of 1.25 ms
+//  maximum: maximum desired connection interval in units of 1.25 ms
+
+  BLE.setConnectionInterval(0x0006, 0x0010); // 7.5 ms minimum, 20 ms maximum
 
   String address = BLE.address();
 
@@ -124,12 +129,12 @@ void setup() {
   BLE.setAdvertisedService(service);
 
   service.addCharacteristic(versionCharacteristic);
-  versionCharacteristic.setValue(VERSION);
+  versionCharacteristic.setValue(NANO_33_BLE_SERVICE_VERSION);
 
   service.addCharacteristic(accelerationCharacteristic);
   service.addCharacteristic(gyroscopeCharacteristic);
   service.addCharacteristic(magneticFieldCharacteristic);
-  service.addCharacteristic(orientationCharacteristic);
+  //  service.addCharacteristic(orientationCharacteristic);
   service.addCharacteristic(rgbLedCharacteristic);
   rgbLedCharacteristic.setEventHandler(BLEWritten, onRgbLedCharacteristicWrite);
 
@@ -152,18 +157,35 @@ void setup() {
   BLE.advertise();
 
   // start the MadgwickAHRS filter to run at the IMU sample rate
-  filter.begin(NANO_33_BLE_IMU_HZ);
-  micros_per_reading = 1000000 / NANO_33_BLE_IMU_HZ;
-  micros_previous = micros();
+  // filter.begin(NANO_33_BLE_IMU_HZ);
+
+  accelerationSamples = 0;
+  gyroscopeSamples = 0;
+  
 }
 
 void loop() {
+  // Keep most recent IMU readings for MadgwichAHRS
+  float acceleration[3] = {0, 0, 0};
+  float dps[3] = {0, 0, 0};
+  float magneticField[3] = {0, 0, 0};
+  
   while (BLE.connected()) {
 
-    // Keep most recent IMU readings for MadgwichAHRS
-    float acceleration[3];
-    float dps[3];
-    float magneticField[3];
+    if (sinceHzPrint >= 1000) {
+      // Print number of samples read in one second (Hz)
+      Serial.print("Accelerometer hz: expected=");
+      Serial.print(IMU.accelerationSampleRate());
+      Serial.print(" / measured=");
+      Serial.println(accelerationSamples);
+      Serial.print("Gyroscope hz: expected=");
+      Serial.print(IMU.gyroscopeSampleRate());
+      Serial.print(" / measured=");
+      Serial.println(gyroscopeSamples);
+      accelerationSamples = 0;
+      gyroscopeSamples = 0;
+      sinceHzPrint = 0;
+    }
 
     if ((ambientLightCharacteristic.subscribed() || colorCharacteristic.subscribed()) && APDS.colorAvailable()) {
       int r, g, b, ambientLight;
@@ -189,7 +211,8 @@ void loop() {
       gestureCharacteristic.writeValue(gesture);
     }
 
-    if ((orientationCharacteristic.subscribed() || accelerationCharacteristic.subscribed()) && IMU.accelerationAvailable()) {
+    //if ((orientationCharacteristic.subscribed() || accelerationCharacteristic.subscribed()) && IMU.accelerationAvailable()) {
+    if (accelerationCharacteristic.subscribed() && IMU.accelerationAvailable()) {
       float x, y, z;
 
       IMU.readAcceleration(x, y, z);
@@ -198,10 +221,11 @@ void loop() {
       acceleration[1] = y;
       acceleration[2] = z;
 
-      if (accelerationCharacteristic.subscribed()) accelerationCharacteristic.writeValue(acceleration, sizeof(acceleration));
+      accelerationCharacteristic.writeValue(acceleration, sizeof(acceleration));
+      accelerationSamples = accelerationSamples + 1;
     }
 
-    if ((orientationCharacteristic.subscribed() || gyroscopeCharacteristic.subscribed()) && IMU.gyroscopeAvailable()) {
+    if (gyroscopeCharacteristic.subscribed() && IMU.gyroscopeAvailable()) {
       float x, y, z;
 
       IMU.readGyroscope(x, y, z);
@@ -210,10 +234,11 @@ void loop() {
       dps[1] = y;
       dps[2] = z;
 
-      if (gyroscopeCharacteristic.subscribed()) gyroscopeCharacteristic.writeValue(dps, sizeof(dps));
+      gyroscopeCharacteristic.writeValue(dps, sizeof(dps));
+      gyroscopeSamples = gyroscopeSamples + 1;
     }
 
-    if ((orientationCharacteristic.subscribed() || magneticFieldCharacteristic.subscribed()) && IMU.magneticFieldAvailable()) {
+    if (magneticFieldCharacteristic.subscribed() && IMU.magneticFieldAvailable()) {
       float x, y, z;
 
       IMU.readMagneticField(x, y, z);
@@ -222,30 +247,29 @@ void loop() {
       magneticField[1] = y;
       magneticField[2] = z;
 
-      if (magneticFieldCharacteristic.subscribed()) magneticFieldCharacteristic.writeValue(magneticField, sizeof(magneticField));
+      magneticFieldCharacteristic.writeValue(magneticField, sizeof(magneticField));
     }
 
-    if (orientationCharacteristic.subscribed() && (micros() - micros_previous >= micros_per_reading)) {
-      float heading, pitch, roll;
+    // if (orientationCharacteristic.subscribed() && (micros() - micros_previous >= micros_per_reading)) {
+    //   float heading, pitch, roll;
 
-      // update the filter, which computes orientation
-      filter.update(
-        dps[0], dps[1], dps[2],
-        acceleration[0], acceleration[1], acceleration[2],
-        magneticField[0], magneticField[1], magneticField[2]
-      );
+    //   // update the filter, which computes orientation
+    //   filter.update(
+    //     dps[0], dps[1], dps[2],
+    //     acceleration[0], acceleration[1], acceleration[2],
+    //     magneticField[0], magneticField[1], magneticField[2]
+    //   );
 
-      heading = filter.getYawRadians();
-      pitch = filter.getPitchRadians();
-      roll = filter.getRollRadians();
+    //   heading = filter.getYawRadians();
+    //   pitch = filter.getPitchRadians();
+    //   roll = filter.getRollRadians();
 
-      float orientation[3] = { heading, pitch, roll };
+    //   float orientation[3] = { heading, pitch, roll };
 
-      orientationCharacteristic.writeValue(orientation, sizeof(orientation));
+    //   orientationCharacteristic.writeValue(orientation, sizeof(orientation));
 
-      micros_previous = micros_previous + micros_per_reading;
-    }
-
+    //   micros_previous = micros_previous + micros_per_reading;
+    // }
 
     if (microphoneLevelCharacteristic.subscribed() && samplesRead) {
       short micLevel;
